@@ -2,7 +2,7 @@
 
 An autonomous bot that forecasts every open question in the Metaculus FutureEval bot tournament and in MiniBench. There is no human in the loop: the bot reads the question, researches it on the web, submits the forecast and posts its reasoning as a private comment through the Metaculus API.
 
-Copyright (c) 2026 stoplus. All rights reserved: the code is published for review only, see [LICENSE](LICENSE).
+Open source under the [MIT License](LICENSE).
 
 Bot account on Metaculus: `ContinuousCustodian-bot`. Status: tested end to end in the Metaculus bot testing area; the GitHub schedule is off until the bot has its own model credits.
 

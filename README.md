@@ -10,7 +10,7 @@ Bot account on Metaculus: `ContinuousCustodian-bot`. Status: tested end to end i
 
 1. A GitHub Actions schedule starts the bot every 20 minutes. Questions stay open for three hours, so each one is seen several times before it closes.
 2. `bot.py` lists the open questions of the configured tournaments and keeps those the bot has not forecast yet. It makes one forecast per question and never updates it.
-3. For each question `forecaster.py` starts Claude Code in non-interactive mode (`claude -p`) with two tools only, web search and web fetch. The model gets the question text, resolution criteria, fine print, bounds and timing, and a fixed forecasting method: read the criteria literally, establish the current state of the world from primary sources, check whether the outcome is already determined, take the base rate, adjust for current evidence, and calibrate.
+3. For each question `forecaster.py` calls the model in one of two ways: through OpenRouter with an API key and the model's native web search (`FORECAST_PROVIDER=openrouter`, used in GitHub Actions), or through Claude Code in non-interactive mode (`claude -p`) with two tools only, web search and web fetch (`FORECAST_PROVIDER=claude-code`). The model gets the question text, resolution criteria, fine print, bounds and timing, and a fixed forecasting method: read the criteria literally, establish the current state of the world from primary sources, check whether the outcome is already determined, take the base rate, adjust for current evidence, and calibrate.
 4. The answer comes back as structured JSON:
    - binary: a probability;
    - multiple choice: a probability per option;
@@ -19,7 +19,7 @@ Bot account on Metaculus: `ContinuousCustodian-bot`. Status: tested end to end i
 6. `cdf.py` turns the percentiles into the cumulative distribution Metaculus expects (201 points, or one per outcome boundary for discrete questions) and enforces the API limits on minimum and maximum step and on probability mass outside the bounds.
 7. Binary forecasts are kept between 1% and 99%. The range widens to 0.3%–99.7% only when every run reports that an authoritative source already shows the outcome.
 
-The model process has no shell or file tools and does not receive the Metaculus token, so text on a web page cannot make it act on the account.
+The model has no shell or file tools and never receives the Metaculus token, so text on a web page cannot make it act on the account.
 
 ## Files
 
@@ -44,7 +44,7 @@ python bot.py --dry-run                         # forecast tournament questions 
 python bot.py                                   # forecast and submit
 ```
 
-The bot needs Claude Code on the `PATH` and two secrets: `METACULUS_TOKEN` (the bot account's API token) and, in CI, `CLAUDE_CODE_OAUTH_TOKEN` (created with `claude setup-token`).
+Secrets: `METACULUS_TOKEN` (the bot account's API token) and either `OPENROUTER_API_KEY` (for `openrouter`) or `CLAUDE_CODE_OAUTH_TOKEN` created with `claude setup-token` (for `claude-code`, which also needs Claude Code on the `PATH`).
 
 ## Settings (environment variables)
 
@@ -54,6 +54,9 @@ The bot needs Claude Code on the `PATH` and two secrets: `METACULUS_TOKEN` (the 
 | `RUNS_PER_QUESTION` | `1` | Independent model runs per question |
 | `TOOL_BUDGET` | `10` | Searches and page reads the model may use per run |
 | `MAX_RUN_COST_USD` | `1.5` | Hard cost cap per run at API list prices |
+| `FORECAST_PROVIDER` | `claude-code` (`openrouter` in GitHub Actions) | How the model is called |
+| `OPENROUTER_MODEL` | `anthropic/claude-fable-5.2` | OpenRouter model ID |
+| `OPENROUTER_WEB` | `native` | `native`: the model's own web search; `exa`: OpenRouter search for any model; `off`: no search |
 | `FORECAST_MODEL` | `fable` | Claude Code model alias |
 | `FORECAST_EFFORT` | `high` | Reasoning effort |
 | `QUESTION_CONCURRENCY` | `2` | Questions forecast in parallel |

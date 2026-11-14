@@ -1,5 +1,6 @@
 """Проверки без сети: распределения, сведение прогонов, разбор вопросов. Запуск: python -m unittest -v"""
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -369,6 +370,58 @@ class RobustnessTests(unittest.TestCase):
             self.assertFalse(bot.PENDING_COMMENTS.exists())
             sent_question, sent_text = client.post_comment.call_args.args
             self.assertEqual((sent_question.post_id, sent_text), (70, "why"))
+
+
+class OpenRouterTests(unittest.TestCase):
+    def call(self, status, body, web="native"):
+        from unittest import mock
+
+        import forecaster
+
+        response = mock.Mock(status_code=status)
+        response.json.return_value = body
+        response.text = json.dumps(body)
+        with mock.patch.object(forecaster, "PROVIDER", "openrouter"), \
+                mock.patch.object(forecaster, "OPENROUTER_WEB", web), \
+                mock.patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}), \
+                mock.patch.object(forecaster.requests, "post", return_value=response) as post:
+            result = forecaster.run_claude("question", {"type": "object"}, "system")
+        return result, post.call_args
+
+    def test_success(self):
+        body = {"choices": [{"message": {"content": '{"probability": 0.42, "already_settled": false, "rationale": "r"}'}}],
+                "usage": {"cost": 0.12, "total_tokens": 3000, "server_tool_use": {"web_search_requests": 4}}}
+        result, call = self.call(200, body)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.data["probability"], 0.42)
+        self.assertEqual((result.cost_usd, result.tokens, result.web_searches), (0.12, 3000, 4))
+        payload = call.kwargs["json"]
+        self.assertEqual(payload["plugins"][0]["engine"], "native")
+        self.assertEqual(payload["response_format"]["type"], "json_schema")
+        self.assertEqual(call.kwargs["headers"]["Authorization"], "Bearer test-key")
+
+    def test_web_off_has_no_plugin_and_says_so(self):
+        body = {"choices": [{"message": {"content": 'Here: {"probability": 0.3}'}}], "usage": {}}
+        result, call = self.call(200, body, web="off")
+        self.assertTrue(result.ok)  # JSON внутри текста тоже разбирается
+        payload = call.kwargs["json"]
+        self.assertNotIn("plugins", payload)
+        self.assertIn("Web search is not available", payload["messages"][0]["content"])
+
+    def test_http_error(self):
+        result, _ = self.call(402, {"error": {"message": "Insufficient credits"}})
+        self.assertFalse(result.ok)
+        self.assertIn("Insufficient credits", result.error)
+
+    def test_missing_key(self):
+        from unittest import mock
+
+        import forecaster
+
+        with mock.patch.object(forecaster, "PROVIDER", "openrouter"), mock.patch.dict("os.environ", {}, clear=True):
+            result = forecaster.run_claude("q", {}, "s")
+        self.assertFalse(result.ok)
+        self.assertIn("OPENROUTER_API_KEY", result.error)
 
 
 class LocalAskTests(unittest.TestCase):

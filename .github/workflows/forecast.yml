@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 170
     env:
       METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+      # openrouter (default here: model credits from Metaculus) or claude-code (Claude subscription).
+      FORECAST_PROVIDER: ${{ vars.FORECAST_PROVIDER || 'openrouter' }}
+      OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'anthropic/claude-fable-5.2' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,12 +48,13 @@ jobs:
         run: python bot.py --check
 
       - name: Install Claude Code
-        if: steps.check.outputs.pending != '0'
+        if: steps.check.outputs.pending != '0' && env.FORECAST_PROVIDER == 'claude-code'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Forecast
         if: steps.check.outputs.pending != '0'
         env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: python bot.py
 

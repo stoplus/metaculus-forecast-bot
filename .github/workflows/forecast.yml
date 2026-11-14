@@ -1,0 +1,91 @@
+name: Forecast
+
+on:
+  # Schedule is off until the bot has its own model credits. To enable: uncomment the two lines below.
+  # Every 20 minutes, because questions stay open for only three hours and open at random times.
+  # schedule:
+  #   - cron: "7,27,47 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: forecast
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    env:
+      METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # Comments not sent in earlier runs are carried over through the cache.
+      - name: Restore pending comments
+        uses: actions/cache/restore@v4
+        with:
+          path: pending-comments.jsonl
+          key: pending-comments-${{ github.run_id }}
+          restore-keys: pending-comments-
+
+      - name: Count questions without a forecast
+        id: check
+        run: python bot.py --check
+
+      - name: Install Claude Code
+        if: steps.check.outputs.pending != '0'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Forecast
+        if: steps.check.outputs.pending != '0'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python bot.py
+
+      - name: Upload forecast log
+        if: always() && steps.check.outputs.pending != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecast-log-${{ github.run_id }}
+          path: forecast-log.jsonl
+          if-no-files-found: ignore
+          retention-days: 90
+
+      # Save an empty file too, otherwise the next run would restore an old one and post its comments again.
+      - name: Prepare pending comments for saving
+        if: always()
+        run: touch pending-comments.jsonl
+
+      - name: Save pending comments
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: pending-comments.jsonl
+          key: pending-comments-${{ github.run_id }}
+
+      - name: Fail if comments are still unsent
+        if: always()
+        run: |
+          if [ -s pending-comments.jsonl ]; then
+            echo "Comments for submitted forecasts are still unsent:"; cat pending-comments.jsonl | cut -c1-200
+            exit 1
+          fi
+
+      # GitHub disables schedules in repositories without activity for 60 days; re-enabling resets the timer.
+      - name: Keep the schedule enabled
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/forecast.yml/enable" || true

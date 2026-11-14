@@ -1,0 +1,9 @@
+{
+  "type": "binary",
+  "title": "Will Loudoun County pause final approvals for new Data Centers and Substations before December 16, 2026?",
+  "description": "Loudoun County, Virginia, sits at the center of the largest concentration of data-center infrastructure in the United States and has experienced exceptionally rapid growth in recent years. The county has historically been highly receptive to new development. From 2022 through May 2026, the Loudoun County Board of Supervisors approved 32 of 39 legislative applications for data centers that came before it.",
+  "resolution_criteria": "This question resolves as Yes if, before December 16, 2026, the Loudoun County Board of Supervisors formally adopts a resolution or other official Board action establishing a general pause on the Board's final votes on legislative applications for both data centers and electrical substations.",
+  "fine_print": "A generally applicable pause may contain exceptions, including for grid reliability or statutory decision deadlines, and still count. The primary resolution sources will be official records of the Loudoun County Board of Supervisors.",
+  "close_time": "2026-12-15T23:00:00Z",
+  "resolve_time": "2026-12-16T12:00:00Z"
+}

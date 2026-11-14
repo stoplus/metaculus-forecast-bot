@@ -1,0 +1,14 @@
+{
+  "type": "numeric",
+  "title": "What will be the closing value of the S&P 500 index on November 30, 2026?",
+  "description": "The S&P 500 is a stock market index tracking 500 of the largest companies listed on US stock exchanges.",
+  "resolution_criteria": "This question resolves as the official closing value of the S&P 500 index (ticker ^GSPC) on Monday, November 30, 2026, as reported by Yahoo Finance or another reliable source of market data.",
+  "fine_print": "",
+  "unit": "index points",
+  "range_min": 3000,
+  "range_max": 12000,
+  "open_lower_bound": true,
+  "open_upper_bound": true,
+  "close_time": "2026-11-20T00:00:00Z",
+  "resolve_time": "2026-12-01T00:00:00Z"
+}
